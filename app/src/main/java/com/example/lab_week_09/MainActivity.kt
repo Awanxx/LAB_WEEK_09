@@ -9,20 +9,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.example.lab_week_09.ui.theme.*
+import com.example.lab_week_09.ui.theme.LAB_WEEK_09Theme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,130 +29,78 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-
                     val navController = rememberNavController()
-                    App(navController = navController)
+                    App(navController)
                 }
             }
         }
     }
 }
-
-data class Student(
-    var name: String
-)
 
 @Composable
 fun App(navController: NavHostController) {
-    NavHost(
-        navController = navController,
-        startDestination = "home"
-    ) {
-        // Route "home"
+    NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            Home { navController.navigate("resultContent/?listData=$it") }
+            HomeScreen(navController)
         }
-
-        // Route "resultContent"
-        composable(
-            "resultContent/?listData={listData}",
-            arguments = listOf(
-                navArgument("listData") { type = NavType.StringType }
-            )
-        ) {
-            ResultContent(it.arguments?.getString("listData").orEmpty())
+        composable("result/{listData}") { backStackEntry ->
+            val listData = backStackEntry.arguments?.getString("listData").orEmpty()
+            ResultContent(listData)
         }
     }
 }
 
 @Composable
-fun Home(
-    navigateFromHomeToResult: (String) -> Unit
-) {
-    val listData = remember {
-        mutableStateListOf(
-            Student("Tanu"),
-            Student("Tina"),
-            Student("Tono")
+fun HomeScreen(navController: NavHostController) {
+    var inputText by remember { mutableStateOf("") }
+    var names by remember { mutableStateOf(listOf("Tanu", "Tina", "Tono")) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Enter a name", style = MaterialTheme.typography.titleLarge)
+
+        TextField(
+            value = inputText,
+            onValueChange = { inputText = it },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            modifier = Modifier.fillMaxWidth()
         )
-    }
 
-    var inputField by remember { mutableStateOf(Student("")) }
+        Spacer(modifier = Modifier.height(16.dp))
 
-    HomeContent(
-        listData = listData,
-        inputField = inputField,
-        onInputValueChange = { input -> inputField = inputField.copy(input) },
-        onButtonClick = {
-            if (inputField.name.isNotBlank()) {
-                listData.add(inputField)
-                inputField = inputField.copy("")
-            }
-        },
-        navigateFromHomeToResult = {
-            navigateFromHomeToResult(listData.toList().toString())
-        }
-    )
-}
-
-@Composable
-fun HomeContent(
-    listData: SnapshotStateList<Student>,
-    inputField: Student,
-    onInputValueChange: (String) -> Unit,
-    onButtonClick: () -> Unit,
-    navigateFromHomeToResult: () -> Unit
-) {
-    LazyColumn {
-        item {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                OnBackgroundTitleText(
-                    text = stringResource(id = R.string.enter_item)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                TextField(
-                    value = inputField.name,
-                    onValueChange = { onInputValueChange(it) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Dua tombol dalam satu Row
-                Row {
-                    PrimaryTextButton(
-                        text = stringResource(id = R.string.button_click)
-                    ) {
-                        onButtonClick()
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    PrimaryTextButton(
-                        text = stringResource(id = R.string.button_navigate)
-                    ) {
-                        navigateFromHomeToResult()
-                    }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Button(onClick = {
+                if (inputText.isNotBlank()) {
+                    names = names + inputText
+                    inputText = ""
                 }
+            }) {
+                Text("Submit")
+            }
+
+            Button(onClick = {
+                if (inputText.isNotBlank()) {
+                    names = names + inputText
+                }
+                val namesString = names.joinToString(", ") // Convert list to a single string
+                navController.navigate("result/$namesString")
+            }) {
+                Text("Finish")
             }
         }
 
-        // Menampilkan list
-        items(listData) { item ->
-            Column(
-                modifier = Modifier
-                    .padding(vertical = 4.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                OnBackgroundItemText(text = item.name)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn {
+            items(names) { name ->
+                Text(text = name, modifier = Modifier.padding(vertical = 4.dp))
             }
         }
     }
@@ -166,20 +110,20 @@ fun HomeContent(
 fun ResultContent(listData: String) {
     Column(
         modifier = Modifier
-            .padding(vertical = 4.dp)
-            .fillMaxSize(),
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OnBackgroundItemText(text = listData)
+        Text(text = "Submitted Names", style = MaterialTheme.typography.titleLarge)
+        Text(text = listData, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
-//  Preview
 @Preview(showBackground = true)
 @Composable
-fun PreviewHome() {
+fun PreviewHomeScreen() {
     LAB_WEEK_09Theme {
         val navController = rememberNavController()
-        App(navController)
+        HomeScreen(navController)
     }
 }
